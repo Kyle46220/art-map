@@ -4,26 +4,27 @@ import CytoscapeComponent from 'react-cytoscapejs';
 import './GraphCanvas.css';
 
 const GraphCanvas = ({ graphData, onNodeClick }) => {
-  const layout = { 
-    name: 'cose', 
-    animate: true, 
-    fit: true, 
-    padding: 50, 
-    idealEdgeLength: 180, 
-    nodeRepulsion: 4500 
-  };
-
   const cyRef = useRef(null);
 
-  // Effect to set up the node click listener
+  const coseLayout = {
+    name: 'cose',
+    randomize: false,
+    fit: false,
+    animate: 'end',
+    animationEasing: 'ease-out',
+    animationDuration: 1000,
+    idealEdgeLength: 180,
+    nodeRepulsion: 4500,
+    padding: 50
+  };
+
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy) return;
 
     const handleTap = (event) => {
       const node = event.target;
-      // Ensure it's a node before firing
-      if (node.isNode()) { 
+      if (node.isNode()) {
         onNodeClick(node.id());
       }
     };
@@ -35,26 +36,31 @@ const GraphCanvas = ({ graphData, onNodeClick }) => {
         cy.removeListener('tap', 'node', handleTap);
       }
     };
-  }, [onNodeClick]); 
+  }, [onNodeClick]);
 
-  // Effect to re-run layout when data changes to make nodes radiate out
   useEffect(() => {
     const cy = cyRef.current;
-    if (cy && graphData.nodes.length > 0) {
-      // Get a fresh layout instance and run it
-      const newLayout = cy.layout(layout);
-      newLayout.run();
+    if (!cy || graphData.nodes.length === 0) return;
+
+    const layout = cy.layout(coseLayout);
+    layout.run();
+
+    if (graphData.edges.length > 0 && graphData.edges.length <= 5) {
+      cy.animate({
+        fit: { padding: 50 }
+      }, {
+        duration: 500
+      });
     }
-  }, [graphData]); // Re-run whenever graphData changes
+
+  }, [graphData]);
 
   return (
     <div className="graph-container">
       <CytoscapeComponent
         elements={CytoscapeComponent.normalizeElements(graphData)}
-        // The container div now controls the size, this will fill it
         style={{ width: '100%', height: '100%' }}
-        // Use 'preset' initially; the effect will run the animated 'cose' layout
-        layout={{ name: 'preset' }} 
+        layout={{ name: 'preset' }}
         stylesheet={stylesheet}
         cy={(cy) => { cyRef.current = cy; }}
       />
@@ -62,7 +68,7 @@ const GraphCanvas = ({ graphData, onNodeClick }) => {
   );
 };
 
-// Define the visual style of the graph
+// --- STYLESHEET UPDATED ---
 const stylesheet = [
   {
     selector: 'node',
@@ -72,7 +78,8 @@ const stylesheet = [
       'height': 80,
       'background-fit': 'cover',
       'background-image': 'data(image)',
-      /* 'background-image-crossorigin' REMOVED to prevent CORS issues */
+      // THIS IS THE FIX: Tell Cytoscape not to use CORS mode for images.
+      'background-image-crossorigin': 'null',
       'border-color': '#4ecdc4',
       'border-width': 4,
       'font-size': 14,

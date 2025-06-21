@@ -1,6 +1,8 @@
+/* src/App.css */
 .App {
   width: 100%;
-  height: 100vh;
+  /* This rule makes the App container fill the #root element. */
+  height: 100%; 
   display: flex;
   flex-direction: column;
 }
@@ -11,6 +13,8 @@
   padding: 1rem 2rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   z-index: 10;
+  /* This ensures the header's height is respected and it never shrinks. */
+  flex-shrink: 0;
 }
 
 .app-header h1 {
@@ -72,4 +76,4 @@
   max-width: 300px;
   z-index: 1000;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-} 
+}

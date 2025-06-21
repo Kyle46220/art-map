@@ -69,24 +69,7 @@ npm install
 npm install axios react-cytoscapejs cytoscape
 ```
 
-# Configure Vite for image proxy (add to vite.config.js)
-# This is needed to handle CORS issues with external images
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    port: 3000,
-    proxy: {
-      '/proxy': {
-        target: 'https://images.saatchiart.com',
-        changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/proxy/, ''),
-        headers: {
-          'Access-Control-Allow-Origin': '*',
-        }
-      },
-    },
-  },
-})
+
 
 ##### **Step 2: Component & File Structure**
 

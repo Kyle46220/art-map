@@ -1,15 +1,18 @@
-// src/components/GraphCanvas.css
+/* src/components/GraphCanvas.css */
 .graph-container {
-  flex: 1; /* This makes the container grow to fill available space */
+  /* This tells the container to grow and fill all available vertical space. */
+  flex: 1; 
+
+  /* This is the crucial fix that prevents the container from collapsing or overflowing in a flex column. */
+  min-height: 0;
+
   width: 100%;
   position: relative;
   background: rgba(0, 0, 0, 0.05);
   backdrop-filter: blur(5px);
-  /* This is a critical flexbox fix that prevents the container from shrinking or expanding incorrectly */
-  min-height: 0; 
 }
 
-/* This is just to ensure the cytoscape canvas itself fills our container */
+/* This ensures the div that Cytoscape creates also fills our container. */
 .graph-container > div {
   width: 100%;
   height: 100%;

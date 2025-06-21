@@ -35,6 +35,8 @@ function App() {
 
         if (!existingNodeIds.has(artistName)) {
             const imageUrl = await getArtistImage(artistName);
+            // --- REVERTED ---
+            // The image URL is now used directly, without the proxy.
             newNodes.push({ data: { id: artistName, label: artistName, image: imageUrl } });
             existingNodeIds.add(artistName);
         }
@@ -49,6 +51,8 @@ function App() {
         for (const assoc of associations) {
             if (!existingNodeIds.has(assoc.name)) {
                 const imageUrl = await getArtistImage(assoc.name);
+                // --- REVERTED ---
+                // The image URL is now used directly, without the proxy.
                 newNodes.push({ data: { id: assoc.name, label: assoc.name, image: imageUrl } });
                 existingNodeIds.add(assoc.name);
             }
