@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+// src/App.jsx
+import React, { useState, useCallback } from 'react';
 import SearchBar from './components/SearchBar';
 import GraphCanvas from './components/GraphCanvas';
 import { getArtistAssociations } from './api/gemini';
@@ -10,64 +11,77 @@ function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const addArtistToGraph = async (artistName) => {
+  const addArtistToGraph = useCallback(async (artistName) => {
+    if (isLoading) {
+      console.log("A search is already in progress.");
+      return;
+    }
+
+    const isAlreadyExpanded = graphData.edges.some(edge => edge.data.source === artistName);
+    if (isAlreadyExpanded) {
+        console.log(`'${artistName}' has already been expanded.`);
+        return;
+    }
+
     setIsLoading(true);
     setError(null);
 
     try {
-      // 1. Check if the central artist node already exists
-      const existingNode = graphData.nodes.find(node => node.data.id === artistName);
+        const newNodes = [];
+        const newEdges = [];
 
-      if (!existingNode) {
-        // If the node is new, get its image and add it
-        const imageUrl = await getArtistImage(artistName);
-        const centralNode = { data: { id: artistName, label: artistName, image: imageUrl } };
-        setGraphData(prev => ({ ...prev, nodes: [...prev.nodes, centralNode] }));
-      }
+        const existingNodeIds = new Set(graphData.nodes.map(n => n.data.id));
+        const existingEdgeIds = new Set(graphData.edges.map(e => e.data.id));
 
-      // 2. Fetch associated artists from Gemini
-      const associations = await getArtistAssociations(artistName);
-      
-      // 3. Process the new associations
-      const newNodes = [];
-      const newEdges = [];
-
-      for (const assoc of associations) {
-        // Check if this associated node already exists in our graph
-        const assocExists = graphData.nodes.some(node => node.data.id === assoc.name);
-        if (!assocExists) {
-          // If not, fetch its image and create a new node
-          const imageUrl = await getArtistImage(assoc.name);
-          newNodes.push({ data: { id: assoc.name, label: assoc.name, image: imageUrl } });
+        if (!existingNodeIds.has(artistName)) {
+            const imageUrl = await getArtistImage(artistName);
+            newNodes.push({ data: { id: artistName, label: artistName, image: imageUrl } });
+            existingNodeIds.add(artistName);
         }
 
-        // Create an edge connecting the central artist to the new one
-        const edgeId = `${artistName}-${assoc.name}`;
-        const edgeExists = graphData.edges.some(edge => edge.data.id === edgeId);
-        if (!edgeExists) {
-          newEdges.push({ 
-            data: { 
-              id: edgeId,
-              source: artistName, 
-              target: assoc.name, 
-              label: assoc.connection 
-            } 
-          });
+        const associations = await getArtistAssociations(artistName);
+        if (!associations || associations.length === 0) {
+            console.warn(`No associations found for ${artistName}`);
+            setIsLoading(false);
+            return;
         }
-      }
 
-      // 4. Update the state by merging old and new data
-      setGraphData(prev => ({
-        nodes: [...prev.nodes, ...newNodes],
-        edges: [...prev.edges, ...newEdges]
-      }));
+        for (const assoc of associations) {
+            if (!existingNodeIds.has(assoc.name)) {
+                const imageUrl = await getArtistImage(assoc.name);
+                newNodes.push({ data: { id: assoc.name, label: assoc.name, image: imageUrl } });
+                existingNodeIds.add(assoc.name);
+            }
+
+            const edgeId = `${artistName}-${assoc.name}`;
+            const reverseEdgeId = `${assoc.name}-${artistName}`;
+            if (!existingEdgeIds.has(edgeId) && !existingEdgeIds.has(reverseEdgeId)) {
+                newEdges.push({ 
+                    data: { 
+                        id: edgeId,
+                        source: artistName, 
+                        target: assoc.name, 
+                        label: assoc.connection 
+                    } 
+                });
+                existingEdgeIds.add(edgeId);
+            }
+        }
+
+        if (newNodes.length > 0 || newEdges.length > 0) {
+            setGraphData(prev => ({
+                nodes: [...prev.nodes, ...newNodes],
+                edges: [...prev.edges, ...newEdges]
+            }));
+        }
 
     } catch (err) {
-      setError(err.message);
+        setError(err.message);
+        setTimeout(() => setError(null), 5000);
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
-  };
+  }, [isLoading, graphData]);
 
   return (
     <div className="App">
@@ -82,4 +96,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;

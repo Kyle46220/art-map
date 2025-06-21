@@ -1,3 +1,4 @@
+// src/index.css
 :root {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
@@ -18,21 +19,22 @@
   box-sizing: border-box;
 }
 
-body {
+/* --- CHANGED --- */
+/* The previous flex styles here were causing layout issues. */
+/* This simpler approach ensures the app takes up the full screen correctly. */
+html, body, #root {
   margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden; /* Prevents scrollbars on the main page */
 }
 
-#root {
-  width: 100%;
-  height: 100vh;
-  margin: 0 auto;
-  text-align: center;
+body {
+  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
 }
+/* --- END CHANGED --- */
+
 
 @media (prefers-color-scheme: light) {
   :root {
@@ -43,4 +45,4 @@ body {
   body {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   }
-} 
+}
