@@ -45,6 +45,7 @@ const stylesheet = [
       'label': 'data(label)',
       'background-fit': 'cover',
       'background-image': 'data(image)',
+      'background-image-crossorigin': 'null',
       'border-color': '#0074D9',
       'border-width': 3,
       'font-size': 14,

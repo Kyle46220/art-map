@@ -21,7 +21,7 @@ function App() {
       if (!existingNode) {
         // If the node is new, get its image and add it
         const imageUrl = await getArtistImage(artistName);
-        const centralNode = { data: { id: artistName, label: artistName, image: `/proxy/${imageUrl}` } };
+        const centralNode = { data: { id: artistName, label: artistName, image: imageUrl } };
         setGraphData(prev => ({ ...prev, nodes: [...prev.nodes, centralNode] }));
       }
 
@@ -38,7 +38,7 @@ function App() {
         if (!assocExists) {
           // If not, fetch its image and create a new node
           const imageUrl = await getArtistImage(assoc.name);
-          newNodes.push({ data: { id: assoc.name, label: assoc.name, image: `/proxy/${imageUrl}` } });
+          newNodes.push({ data: { id: assoc.name, label: assoc.name, image: imageUrl } });
         }
 
         // Create an edge connecting the central artist to the new one

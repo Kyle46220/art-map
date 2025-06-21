@@ -50,8 +50,8 @@ This is the most critical setup step. You will need API keys for both services.
 ```bash
 # .env.local
 VITE_GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
-VITE_Google Search_API_KEY="YOUR_Google Search_API_KEY"
-VITE_Google Search_ENGINE_ID="YOUR_SEARCH_ENGINE_ID"
+VITE_GOOGLE_SEARCH_API_KEY="YOUR_GOOGLE_SEARCH_API_KEY"
+VITE_GOOGLE_SEARCH_ENGINE_ID="YOUR_SEARCH_ENGINE_ID"
 ```
 
 -----
@@ -68,6 +68,25 @@ cd artverse-navigator
 npm install
 npm install axios react-cytoscapejs cytoscape
 ```
+
+# Configure Vite for image proxy (add to vite.config.js)
+# This is needed to handle CORS issues with external images
+export default defineConfig({
+  plugins: [react()],
+  server: {
+    port: 3000,
+    proxy: {
+      '/proxy': {
+        target: 'https://images.saatchiart.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/proxy/, ''),
+        headers: {
+          'Access-Control-Allow-Origin': '*',
+        }
+      },
+    },
+  },
+})
 
 ##### **Step 2: Component & File Structure**
 
@@ -125,12 +144,12 @@ export default App;
 
 Create a robust function to call the Gemini API and parse its response.
 
-````javascript
+```javascript
 // src/api/gemini.js
 import axios from 'axios';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.0-pro:generateContent?key=${GEMINI_API_KEY}`;
+const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 // This prompt is CRITICAL. It instructs the model to return ONLY JSON.
 const buildPrompt = (artistName) => `
@@ -141,6 +160,10 @@ Do not include any text before or after the JSON object. Do not use markdown for
 
 export const getArtistAssociations = async (artistName) => {
   try {
+    if (!GEMINI_API_KEY) {
+      throw new Error("Gemini API key not found. Please set VITE_GEMINI_API_KEY in your .env.local file.");
+    }
+
     const prompt = buildPrompt(artistName);
     const response = await axios.post(API_URL, {
       contents: [{ parts: [{ text: prompt }] }],
@@ -153,10 +176,23 @@ export const getArtistAssociations = async (artistName) => {
     return JSON.parse(jsonText).associations; // e.g., [{ name: 'Artist B', connection: '...' }]
   } catch (error) {
     console.error("Error fetching from Gemini API:", error);
+    
+    // Fallback data for development/testing
+    if (!GEMINI_API_KEY) {
+      console.warn("Using fallback data since API key is not configured");
+      return [
+        { name: "Pablo Picasso", connection: "Cubist movement pioneer" },
+        { name: "Georges Braque", connection: "Co-founder of Cubism" },
+        { name: "Henri Matisse", connection: "Contemporary and rival" },
+        { name: "Paul Cézanne", connection: "Major influence" },
+        { name: "Joan Miró", connection: "Surrealist contemporary" }
+      ];
+    }
+    
     throw new Error("Could not retrieve artist connections.");
   }
 };
-````
+```
 
 ##### **Step 5: The Google Image Search API Call**
 
@@ -166,23 +202,28 @@ Create a function to fetch an image URL for an artist.
 // src/api/googleImageSearch.js
 import axios from 'axios';
 
-const GOOGLE_API_KEY = import.meta.env.VITE_Google Search_API_KEY;
-const SEARCH_ENGINE_ID = import.meta.env.VITE_Google Search_ENGINE_ID;
+const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_SEARCH_API_KEY;
+const SEARCH_ENGINE_ID = import.meta.env.VITE_GOOGLE_SEARCH_ENGINE_ID;
 
 export const getArtistImage = async (artistName) => {
   const query = `${artistName} artwork`;
   const API_URL = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${SEARCH_ENGINE_ID}&q=${encodeURIComponent(query)}&searchType=image&num=1`;
 
   try {
+    if (!GOOGLE_API_KEY || !SEARCH_ENGINE_ID) {
+      console.warn("Google Search API credentials not configured, using placeholder image");
+      return 'https://via.placeholder.com/150/cccccc/ffffff?text=' + encodeURIComponent(artistName);
+    }
+
     const response = await axios.get(API_URL);
     if (response.data.items && response.data.items.length > 0) {
       return response.data.items[0].link; // URL of the first image result
     }
-    return null; // Return null if no image is found
+    return 'https://via.placeholder.com/150/cccccc/ffffff?text=' + encodeURIComponent(artistName); // Return placeholder if no image is found
   } catch (error) {
     console.error("Error fetching from Google Image Search:", error);
-    // Return a placeholder or null so the app doesn't crash
-    return 'https://via.placeholder.com/150'; 
+    // Return a placeholder so the app doesn't crash
+    return 'https://via.placeholder.com/150/cccccc/ffffff?text=' + encodeURIComponent(artistName); 
   }
 };
 ```
@@ -209,42 +250,52 @@ const addArtistToGraph = async (artistName) => {
   if (!existingNode) {
     // If the node is new, get its image and add it
     const imageUrl = await getArtistImage(artistName);
-    const centralNode = { data: { id: artistName, label: artistName, image: imageUrl } };
+    const centralNode = { data: { id: artistName, label: artistName, image: `/proxy/${imageUrl}` } };
     setGraphData(prev => ({ ...prev, nodes: [...prev.nodes, centralNode] }));
   }
 
   // 2. Fetch associated artists from Gemini
-  try {
-    const associations = await getArtistAssociations(artistName);
-    
-    // 3. Process the new associations
-    const newNodes = [];
-    const newEdges = [];
+  const associations = await getArtistAssociations(artistName);
+  
+  // 3. Process the new associations
+  const newNodes = [];
+  const newEdges = [];
 
-    for (const assoc of associations) {
-      // Check if this associated node already exists in our graph
-      const assocExists = graphData.nodes.some(node => node.data.id === assoc.name);
-      if (!assocExists) {
-        // If not, fetch its image and create a new node
-        const imageUrl = await getArtistImage(assoc.name);
-        newNodes.push({ data: { id: assoc.name, label: assoc.name, image: imageUrl } });
-      }
-
-      // Create an edge connecting the central artist to the new one
-      newEdges.push({ data: { source: artistName, target: assoc.name, label: assoc.connection } });
+  for (const assoc of associations) {
+    // Check if this associated node already exists in our graph
+    const assocExists = graphData.nodes.some(node => node.data.id === assoc.name);
+    if (!assocExists) {
+      // If not, fetch its image and create a new node
+      const imageUrl = await getArtistImage(assoc.name);
+      newNodes.push({ data: { id: assoc.name, label: assoc.name, image: `/proxy/${imageUrl}` } });
     }
 
-    // 4. Update the state by merging old and new data
-    setGraphData(prev => ({
-      nodes: [...prev.nodes, ...newNodes],
-      edges: [...prev.edges, ...newEdges]
-    }));
-
-  } catch (err) {
-    setError(err.message);
-  } finally {
-    setIsLoading(false);
+    // Create an edge connecting the central artist to the new one
+    const edgeId = `${artistName}-${assoc.name}`;
+    const edgeExists = graphData.edges.some(edge => edge.data.id === edgeId);
+    if (!edgeExists) {
+      newEdges.push({ 
+        data: { 
+          id: edgeId,
+          source: artistName, 
+          target: assoc.name, 
+          label: assoc.connection 
+        } 
+      });
+    }
   }
+
+  // 4. Update the state by merging old and new data
+  setGraphData(prev => ({
+    nodes: [...prev.nodes, ...newNodes],
+    edges: [...prev.edges, ...newEdges]
+  }));
+
+} catch (err) {
+  setError(err.message);
+} finally {
+  setIsLoading(false);
+}
 };
 ```
 
