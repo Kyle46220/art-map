@@ -5,7 +5,8 @@ import './GraphCanvas.css';
 
 const GraphCanvas = ({ graphData, onNodeClick }) => {
   const cyRef = useRef(null);
-  const [tooltip, setTooltip] = useState(null);
+  const tooltipRef = useRef(null); // Ref for the tooltip DOM element
+  const [activeEdge, setActiveEdge] = useState(null); // State to track the hovered edge
 
   const coseLayout = {
     name: 'cose',
@@ -21,69 +22,67 @@ const GraphCanvas = ({ graphData, onNodeClick }) => {
 
   useEffect(() => {
     const cy = cyRef.current;
-    if (!cy) return;
+    if (!cy || !tooltipRef.current) return;
 
-    const handleNodeTap = (event) => {
-      const node = event.target;
-      if (node.isNode()) {
-        onNodeClick(node.id());
-      }
-    };
-
+    // --- MOUSEOVER / MOUSEOUT ---
     const handleEdgeMouseOver = (event) => {
       const edge = event.target;
       edge.addClass('highlighted');
-      
-      const sourceName = edge.source().data('label');
-      const targetName = edge.target().data('label');
-
-      setTooltip({
-        title: `${sourceName} & ${targetName}`,
-        body: edge.data('label'),
-        x: event.renderedPosition.x,
-        y: event.renderedPosition.y,
-      });
-    };
-
-    const handleEdgeMouseOut = (event) => {
-      const edge = event.target;
-      edge.removeClass('highlighted');
-      setTooltip(null);
+      setActiveEdge(edge); // Set the active edge to trigger React re-render
     };
     
+    const handleEdgeMouseOut = (event) => {
+      event.target.removeClass('highlighted');
+      setActiveEdge(null); // Clear the active edge
+    };
+
+    // --- POSITIONING LOGIC ---
+    // This function updates the tooltip's position. It's the core of the fix.
+    const updateTooltipPosition = () => {
+      if (!activeEdge || !tooltipRef.current) return;
+      
+      const tooltip = tooltipRef.current;
+      const { x, y } = activeEdge.midpoint(); // Get the midpoint of the edge
+      const { x: panX, y: panY } = cy.pan();
+      const zoom = cy.zoom();
+
+      // Apply pan and zoom to the midpoint to get the correct screen coordinates
+      const renderedX = x * zoom + panX;
+      const renderedY = y * zoom + panY;
+
+      tooltip.style.transform = `translate(-50%, -150%) translate(${renderedX}px, ${renderedY - 30}px)`;
+    };
+
+    // --- EVENT BINDING ---
+    const handleNodeTap = (event) => onNodeClick(event.target.id());
+
     cy.on('tap', 'node', handleNodeTap);
     cy.on('mouseover', 'edge', handleEdgeMouseOver);
     cy.on('mouseout', 'edge', handleEdgeMouseOut);
 
-    return () => {
-      if (cy.removeListener) {
-        cy.removeListener('tap', 'node', handleNodeTap);
-        cy.removeListener('mouseover', 'edge', handleEdgeMouseOver);
-        cy.removeListener('mouseout', 'edge', handleEdgeMouseOut);
-      }
-    };
-  }, [onNodeClick]); 
+    // CRITICAL: Update tooltip position on pan, zoom, or graph render
+    cy.on('pan zoom render', updateTooltipPosition);
 
+    // Update position if the active edge changes
+    if (activeEdge) {
+      updateTooltipPosition();
+    }
+
+    return () => {
+      cy.removeListener('tap', 'node', handleNodeTap);
+      cy.removeListener('mouseover', 'edge', handleEdgeMouseOver);
+      cy.removeListener('mouseout', 'edge', handleEdgeMouseOut);
+      cy.removeListener('pan zoom render', updateTooltipPosition);
+    };
+  }, [activeEdge, onNodeClick]); // Re-run effect when activeEdge changes
+
+  // Effect for running the layout
   useEffect(() => {
     const cy = cyRef.current;
     if (!cy || graphData.nodes.length === 0) return;
-
     const layout = cy.layout(coseLayout);
     layout.run();
-
-    if (graphData.edges.length > 0 && graphData.edges.length <= 5) {
-      cy.animate({
-        fit: { padding: 50 }
-      }, {
-        duration: 500
-      });
-    }
-
-    // Force a re-layout once styles are applied to fix font-size bounding box issues
-    // setTimeout(() => {
-    //   cy.fit();
-    //   cy.center();
-    // }, 0);
+    // Removed all fitting/positioning code - let graph appear naturally
   }, [graphData]);
 
   return (
@@ -95,15 +94,19 @@ const GraphCanvas = ({ graphData, onNodeClick }) => {
         stylesheet={stylesheet}
         cy={(cy) => { cyRef.current = cy; }}
       />
-      {tooltip && (
-        <div 
-          className="graph-tooltip" 
-          style={{ top: `${tooltip.y}px`, left: `${tooltip.x}px` }}
-        >
-          <h4 className="tooltip-title">{tooltip.title}</h4>
-          <p className="tooltip-body">{tooltip.body}</p>
-        </div>
-      )}
+      {/* The tooltip div is now controlled by a ref and its content by state */}
+      <div 
+        ref={tooltipRef}
+        className="graph-tooltip"
+        style={{ display: activeEdge ? 'inline-block' : 'none' }} // Show/hide based on activeEdge
+      >
+        {activeEdge && (
+          <>
+            <h4 className="tooltip-title">{`${activeEdge.source().data('label')} & ${activeEdge.target().data('label')}`}</h4>
+            <p className="tooltip-body">{activeEdge.data('label')}</p>
+          </>
+        )}
+      </div>
     </div>
   );
 };
@@ -113,54 +116,34 @@ const stylesheet = [
     selector: 'node',
     style: {
       'label': 'data(label)',
-      'width': 80,
-      'height': 80,
+      'width': 80, 'height': 80,
       'font-family': 'Inter',
       
-      // THE DEFINITIVE FIX: Cytoscape requires a number, not a string with 'px'.
+      // THE DEFINITIVE FIX: Cytoscape requires a number, not a string.
       'font-size': 12, 
       
-      'text-valign': 'bottom',
-      'text-halign': 'center',
-      'text-margin-y': 5,
-      'color': '#F0F0F0',
-      'text-outline-color': '#0D1B2A',
-      'text-outline-width': 2,
-      'background-fit': 'cover',
-      'background-image': 'data(image)',
-      'background-image-crossorigin': 'null',
-      'border-color': '#5FC3E4',
-      'border-width': 4,
-      'cursor': 'pointer',
+      'text-valign': 'bottom', 'text-halign': 'center', 'text-margin-y': 5,
+      'color': '#F0F0F0', 'text-outline-color': '#0D1B2A', 'text-outline-width': 2,
+      'background-fit': 'cover', 'background-image': 'data(image)', 'background-image-crossorigin': 'null',
+      'border-color': '#5FC3E4', 'border-width': 4, 'cursor': 'pointer',
     }
   },
   {
     selector: 'edge',
     style: {
-      'width': 1.5,
-      'line-color': 'rgba(224, 229, 236, 0.25)',
-      'target-arrow-color': 'rgba(224, 229, 236, 0.25)',
-      'target-arrow-shape': 'triangle',
-      'curve-style': 'bezier',
-      'label': 'data(label)',
-      'text-opacity': 0, 
-      'transition-property': 'line-color, width',
-      'transition-duration': '0.2s',
-    }
-  },
-   {
-    selector: ':selected',
-    style: {
-      'border-color': '#E55D87',
-      'border-width': 6,
+      'width': 1.5, 'line-color': 'rgba(224, 229, 236, 0.25)',
+      'target-arrow-color': 'rgba(224, 229, 236, 0.25)', 'target-arrow-shape': 'triangle',
+      'curve-style': 'bezier', 'label': 'data(label)', 'text-opacity': 0, 
+      'transition-property': 'line-color, width', 'transition-duration': '0.2s',
     }
   },
   {
+    selector: ':selected',
+    style: { 'border-color': '#E55D87', 'border-width': 6, }
+  },
+  {
     selector: 'edge.highlighted',
-    style: {
-      'line-color': '#E55D87',
-      'width': 3,
-    }
+    style: { 'line-color': '#E55D87', 'width': 3, }
   }
 ];
 

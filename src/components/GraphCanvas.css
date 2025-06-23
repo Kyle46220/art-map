@@ -15,11 +15,12 @@
 
 .graph-tooltip {
   position: fixed;
-  display:inline-flex;   /* flex items shrink-wrap */
+  display: flex;
   flex-direction: column;
-  /* NEW — constrain height explicitly */
-  max-height: 80vh;
-  overflow: hidden;
+  
+  /* Add explicit height constraint */
+  height: auto;
+  max-height: 200px;
 
   background-color: rgba(13, 27, 42, 0.9);
   backdrop-filter: blur(8px);
@@ -32,7 +33,7 @@
   text-align: left;
   pointer-events: none;
   z-index: 20;
-  transform: translate(-50%, 20px);
+  transform: translate(-50%, -150%);
   transition: opacity 0.2s ease-in-out;
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
   border: 1px solid rgba(255, 255, 255, 0.1);
