@@ -92,6 +92,8 @@ function App() {
     <div className="App">
       <header className="app-header">
         <h1>Art Map</h1>
+        <p>Search for an artist to see their influences, contemporaries and connections</p>
+        <p>Click any artist to expand the web.</p>
         <SearchBar onSearch={addArtistToGraph} />
       </header>
       {isLoading && <div className="loading-spinner">Loading...</div>}
