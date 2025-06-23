@@ -1,12 +1,15 @@
-// src/index.css
+/* src/index.css */
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* Default font for the entire app */
+  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  color-scheme: dark; /* Force dark mode for consistent styling */
+  color: #F0F0F0; /* Use a softer off-white for text */
+  
+  /* The new dark, sophisticated background color */
+  background-color: #0D1B2A; 
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -19,27 +22,15 @@
   box-sizing: border-box;
 }
 
-/* This creates the foundational layout. 
-   Every parent from <html> down to #root now has a defined height. */
 html, body, #root {
   margin: 0;
   padding: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden; /* Prevents unwanted scrollbars on the main page */
+  overflow: hidden;
 }
 
+/* Set the body background to our new color */
 body {
-  background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  
-  body {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  }
+  background: #0D1B2A;
 }

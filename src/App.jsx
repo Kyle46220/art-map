@@ -1,4 +1,5 @@
 // src/App.jsx
+//working
 import React, { useState, useCallback } from 'react';
 import SearchBar from './components/SearchBar';
 import GraphCanvas from './components/GraphCanvas';
@@ -90,7 +91,7 @@ function App() {
   return (
     <div className="App">
       <header className="app-header">
-        <h1>Artverse Navigator</h1>
+        <h1>Art Map</h1>
         <SearchBar onSearch={addArtistToGraph} />
       </header>
       {isLoading && <div className="loading-spinner">Loading...</div>}
