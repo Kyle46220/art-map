@@ -1,15 +1,12 @@
 import axios from 'axios';
 
-const GOOGLE_API_KEY = import.meta.env.VITE_GOOGLE_SEARCH_API_KEY;
-const SEARCH_ENGINE_ID = import.meta.env.VITE_GOOGLE_SEARCH_ENGINE_ID;
-
-export const getArtistImage = async (artistName) => {
+export const getArtistImage = async (artistName, apiKey, engineId) => {
   const query = `${artistName} artwork`;
-  const API_URL = `https://www.googleapis.com/customsearch/v1?key=${GOOGLE_API_KEY}&cx=${SEARCH_ENGINE_ID}&q=${encodeURIComponent(query)}&searchType=image&num=1`;
+  const API_URL = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${engineId}&q=${encodeURIComponent(query)}&searchType=image&num=1`;
 
   try {
-    if (!GOOGLE_API_KEY || !SEARCH_ENGINE_ID) {
-      console.warn("Google Search API credentials not configured, using placeholder image");
+    if (!apiKey || !engineId) {
+      console.warn("Google Search API credentials not provided, using placeholder image");
       return 'https://via.placeholder.com/150/cccccc/ffffff?text=' + encodeURIComponent(artistName);
     }
 
