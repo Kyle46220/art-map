@@ -3,7 +3,7 @@ import axios from 'axios';
 // This prompt is CRITICAL. It instructs the model to return ONLY JSON.
 const buildPrompt = (artistName) => `
 You are an expert art historian API. For the artist "${artistName}", generate a list of 5 associated artists. Associations can be direct influence, a shared movement, or a contemporary with a similar style.
-Return the answer ONLY as a valid JSON object with a single key "associations". The value should be an array of objects, where each object has "name" and "connection" keys.
+Return the answer ONLY as a valid JSON object with a single key "associations". The value should be an array of objects, where each object has "name" and "connection" keys. always include the artists full name in the name key.
 Do not include any text before or after the JSON object. Do not use markdown formatting.
 `;
 
