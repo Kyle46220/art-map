@@ -12,17 +12,15 @@ function App() {
   const [graphData, setGraphData] = useState({ nodes: [], edges: [] });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [geminiKey, setGeminiKey] = useState(sessionStorage.getItem('geminiKey') || '');
-  const [searchApiKey, setSearchApiKey] = useState(sessionStorage.getItem('searchApiKey') || '');
-  const [searchEngineId, setSearchEngineId] = useState(sessionStorage.getItem('searchEngineId') || '');
+  const [geminiKey, setGeminiKey] = useState('');
+  const [searchApiKey, setSearchApiKey] = useState('');
+  const [searchEngineId, setSearchEngineId] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [pendingQuery, setPendingQuery] = useState(null);
 
-  useEffect(() => {
-    sessionStorage.setItem('geminiKey', geminiKey);
-    sessionStorage.setItem('searchApiKey', searchApiKey);
-    sessionStorage.setItem('searchEngineId', searchEngineId);
-  }, [geminiKey, searchApiKey, searchEngineId]);
+  // Remove useEffect for sessionStorage
+  // In state: keep [geminiKey, setGeminiKey], etc., but without sessionStorage init
+  // Rest remains similar, but no storage persistence
 
   const handleSearch = (query) => {
     if (!geminiKey || !searchApiKey || !searchEngineId) {
@@ -47,10 +45,10 @@ function App() {
       return;
     }
 
-    const isAlreadyExpanded = graphData.edges.some(edge => edge.data.source === artistName);
+    const isAlreadyExpanded = graphData.edges.some(edge => edge.data.source === artistName && edge.data.fromRealApi); // Add flag to skip only if real data was used
     if (isAlreadyExpanded) {
-        console.log(`'${artistName}' has already been expanded.`);
-        return;
+      console.log(`'${artistName}' already expanded with real data.`);
+      return;
     }
 
     setIsLoading(true);
@@ -95,7 +93,8 @@ function App() {
                         id: edgeId,
                         source: artistName, 
                         target: assoc.name, 
-                        label: assoc.connection 
+                        label: assoc.connection,
+                        fromRealApi: true // Flag for real data
                     } 
                 });
                 existingEdgeIds.add(edgeId);

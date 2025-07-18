@@ -5,8 +5,8 @@ import './GraphCanvas.css';
 
 const GraphCanvas = ({ graphData, onNodeClick }) => {
   const cyRef = useRef(null);
-  const tooltipRef = useRef(null); // Ref for the tooltip DOM element
-  const [activeEdge, setActiveEdge] = useState(null); // State to track the hovered edge
+  const tooltipRef = useRef(null); // For edges
+  const [activeEdge, setActiveEdge] = useState(null);
 
   const coseLayout = {
     name: 'cose',
@@ -29,6 +29,15 @@ const GraphCanvas = ({ graphData, onNodeClick }) => {
       const edge = event.target;
       edge.addClass('highlighted');
       setActiveEdge(edge); // Set the active edge to trigger React re-render
+      // Position at mouse
+      const tooltip = tooltipRef.current;
+      if (tooltip) {
+        const { x, y } = event.renderedPosition;
+        tooltip.style.left = `${x + 10}px`;
+        tooltip.style.top = `${y + 10}px`;
+        tooltip.style.transform = 'none'; // Remove transform, use absolute positioning
+        tooltip.style.position = 'absolute';
+      }
     };
     
     const handleEdgeMouseOut = (event) => {
@@ -38,20 +47,7 @@ const GraphCanvas = ({ graphData, onNodeClick }) => {
 
     // --- POSITIONING LOGIC ---
     // This function updates the tooltip's position. It's the core of the fix.
-    const updateTooltipPosition = () => {
-      if (!activeEdge || !tooltipRef.current) return;
-      
-      const tooltip = tooltipRef.current;
-      const { x, y } = activeEdge.midpoint(); // Get the midpoint of the edge
-      const { x: panX, y: panY } = cy.pan();
-      const zoom = cy.zoom();
-
-      // Apply pan and zoom to the midpoint to get the correct screen coordinates
-      const renderedX = x * zoom + panX;
-      const renderedY = y * zoom + panY;
-
-      tooltip.style.transform = `translate(-50%, -150%) translate(${renderedX}px, ${renderedY - 30}px)`;
-    };
+    // Remove updateTooltipPosition and updateNodeTooltipPosition functions and their event listeners, as positioning now happens on mouseover
 
     // --- EVENT BINDING ---
     const handleNodeTap = (event) => onNodeClick(event.target.id());
@@ -61,18 +57,18 @@ const GraphCanvas = ({ graphData, onNodeClick }) => {
     cy.on('mouseout', 'edge', handleEdgeMouseOut);
 
     // CRITICAL: Update tooltip position on pan, zoom, or graph render
-    cy.on('pan zoom render', updateTooltipPosition);
+    // In useEffect, remove cy.on('pan zoom render', ...) for tooltips
 
     // Update position if the active edge changes
     if (activeEdge) {
-      updateTooltipPosition();
+      // updateTooltipPosition(); // This line is no longer needed
     }
 
     return () => {
       cy.removeListener('tap', 'node', handleNodeTap);
       cy.removeListener('mouseover', 'edge', handleEdgeMouseOver);
       cy.removeListener('mouseout', 'edge', handleEdgeMouseOut);
-      cy.removeListener('pan zoom render', updateTooltipPosition);
+      // cy.removeListener('pan zoom render', updateTooltipPosition); // This line is no longer needed
     };
   }, [activeEdge, onNodeClick]); // Re-run effect when activeEdge changes
 
@@ -94,11 +90,11 @@ const GraphCanvas = ({ graphData, onNodeClick }) => {
         stylesheet={stylesheet}
         cy={(cy) => { cyRef.current = cy; }}
       />
-      {/* The tooltip div is now controlled by a ref and its content by state */}
+      {/* Edge Tooltip */}
       <div 
         ref={tooltipRef}
         className="graph-tooltip"
-        style={{ display: activeEdge ? 'inline-block' : 'none' }} // Show/hide based on activeEdge
+        style={{ display: activeEdge ? 'inline-block' : 'none' }}
       >
         {activeEdge && (
           <>
